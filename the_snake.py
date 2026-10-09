@@ -79,7 +79,7 @@ class Apple(GameObject):
 
     def __init__(
         self,
-        occupied_positions,
+        occupied_positions=None,
         position=START_POSITION,
         body_color=APPLE_COLOR,
     ):
@@ -87,8 +87,11 @@ class Apple(GameObject):
         super().__init__(position=position, body_color=body_color)
         self.randomize_position(occupied_positions)
 
-    def randomize_position(self, occupied_positions):
+    def randomize_position(self, occupied_positions=None):
         """Sets a random position for the apple avoiding occupied cells."""
+        if occupied_positions is None:
+            occupied_positions = []
+
         while True:
             new_position = (
                 randint(0, GRID_WIDTH - 1) * GRID_SIZE,
