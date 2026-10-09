@@ -3,7 +3,7 @@
 import sys
 from random import randint
 
-import pygame as pg
+import pygame
 
 # Game field and grid sizes:
 SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
@@ -22,10 +22,10 @@ RIGHT = (1, 0)
 
 # Turns dictionary for key handling:
 TURNS = {
-    pg.K_UP: (UP, DOWN),
-    pg.K_DOWN: (DOWN, UP),
-    pg.K_LEFT: (LEFT, RIGHT),
-    pg.K_RIGHT: (RIGHT, LEFT),
+    pygame.K_UP: (UP, DOWN),
+    pygame.K_DOWN: (DOWN, UP),
+    pygame.K_LEFT: (LEFT, RIGHT),
+    pygame.K_RIGHT: (RIGHT, LEFT),
 }
 
 # Background color - black:
@@ -44,13 +44,13 @@ SNAKE_COLOR = (0, 255, 0)
 SPEED = 20
 
 # Game window setup:
-screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
 
 # Game window caption:
-pg.display.set_caption('Snake')
+pygame.display.set_caption('Snake')
 
 # Time setup:
-clock = pg.time.Clock()
+clock = pygame.time.Clock()
 
 
 class GameObject:
@@ -69,9 +69,9 @@ class GameObject:
 
     def draw_cell(self, position):
         """Draws a single cell at the given position."""
-        rect = pg.Rect(position, (GRID_SIZE, GRID_SIZE))
-        pg.draw.rect(screen, self.body_color, rect)
-        pg.draw.rect(screen, BORDER_COLOR, rect, 1)
+        rect = pygame.Rect(position, (GRID_SIZE, GRID_SIZE))
+        pygame.draw.rect(screen, self.body_color, rect)
+        pygame.draw.rect(screen, BORDER_COLOR, rect, 1)
 
 
 class Apple(GameObject):
@@ -153,11 +153,11 @@ class Snake(GameObject):
 
 def handle_keys(game_object):
     """Handles key presses for snake control."""
-    for event in pg.event.get():
-        if event.type == pg.QUIT:
-            pg.quit()
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
             sys.exit()
-        elif event.type == pg.KEYDOWN:
+        elif event.type == pygame.KEYDOWN:
             if event.key in TURNS:
                 new_direction, opposite = TURNS[event.key]
                 if game_object.direction != opposite:
@@ -167,7 +167,7 @@ def handle_keys(game_object):
 def main():
     """Runs the main game loop."""
     # PyGame initialization:
-    pg.init()
+    pygame.init()
 
     # Create instances of the classes.
     snake = Snake()
@@ -201,7 +201,7 @@ def main():
         apple.draw()
 
         # Update the screen.
-        pg.display.update()
+        pygame.display.update()
 
 
 if __name__ == '__main__':
