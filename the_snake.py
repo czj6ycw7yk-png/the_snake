@@ -1,6 +1,6 @@
 """Snake game (project 'Bending Python')."""
 
-from random import choice, randint
+from random import randint
 
 import pygame
 
