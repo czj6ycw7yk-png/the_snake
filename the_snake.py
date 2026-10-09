@@ -1,8 +1,9 @@
 """Snake game (project 'Bending Python')."""
 
+import sys
 from random import randint
 
-import pygame
+import pygame as pg
 
 # Game field and grid sizes:
 SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
@@ -10,11 +11,22 @@ GRID_SIZE = 20
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
 GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
 
+# Start position - center of the screen:
+START_POSITION = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+
 # Directions:
 UP = (0, -1)
 DOWN = (0, 1)
 LEFT = (-1, 0)
 RIGHT = (1, 0)
+
+# Turns dictionary for key handling:
+TURNS = {
+    pg.K_UP: (UP, DOWN),
+    pg.K_DOWN: (DOWN, UP),
+    pg.K_LEFT: (LEFT, RIGHT),
+    pg.K_RIGHT: (RIGHT, LEFT),
+}
 
 # Background color - black:
 BOARD_BACKGROUND_COLOR = (0, 0, 0)
@@ -32,58 +44,71 @@ SNAKE_COLOR = (0, 255, 0)
 SPEED = 20
 
 # Game window setup:
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
+screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
 
 # Game window caption:
-pygame.display.set_caption('Snake')
+pg.display.set_caption('Snake')
 
 # Time setup:
-clock = pygame.time.Clock()
+clock = pg.time.Clock()
 
 
 class GameObject:
     """Base class for game objects."""
 
-    def __init__(self, position=None, body_color=None):
+    def __init__(self, position=START_POSITION, body_color=None):
         """Initializes the position and color of a game object."""
-        if position is None:
-            position = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
         self.position = position
         self.body_color = body_color
 
     def draw(self):
         """Draws the object. Overridden in child classes."""
-        pass
+        raise NotImplementedError(
+            f'Method draw() is not implemented in {self.__class__.__name__}'
+        )
+
+    def draw_cell(self, position):
+        """Draws a single cell at the given position."""
+        rect = pg.Rect(position, (GRID_SIZE, GRID_SIZE))
+        pg.draw.rect(screen, self.body_color, rect)
+        pg.draw.rect(screen, BORDER_COLOR, rect, 1)
 
 
 class Apple(GameObject):
     """Apple class that the snake collects."""
 
-    def __init__(self):
+    def __init__(
+        self,
+        occupied_positions,
+        position=START_POSITION,
+        body_color=APPLE_COLOR,
+    ):
         """Creates an apple and assigns it a random position."""
-        super().__init__(body_color=APPLE_COLOR)
-        self.randomize_position()
+        super().__init__(position=position, body_color=body_color)
+        self.randomize_position(occupied_positions)
 
-    def randomize_position(self):
-        """Sets a random position for the apple on the game field."""
-        self.position = (
-            randint(0, GRID_WIDTH - 1) * GRID_SIZE,
-            randint(0, GRID_HEIGHT - 1) * GRID_SIZE,
-        )
+    def randomize_position(self, occupied_positions):
+        """Sets a random position for the apple avoiding occupied cells."""
+        while True:
+            new_position = (
+                randint(0, GRID_WIDTH - 1) * GRID_SIZE,
+                randint(0, GRID_HEIGHT - 1) * GRID_SIZE,
+            )
+            if new_position not in occupied_positions:
+                self.position = new_position
+                break
 
     def draw(self):
         """Draws the apple on the game field."""
-        rect = pygame.Rect(self.position, (GRID_SIZE, GRID_SIZE))
-        pygame.draw.rect(screen, self.body_color, rect)
-        pygame.draw.rect(screen, BORDER_COLOR, rect, 1)
+        self.draw_cell(self.position)
 
 
 class Snake(GameObject):
     """Snake class controlled by the player."""
 
-    def __init__(self):
+    def __init__(self, position=START_POSITION, body_color=SNAKE_COLOR):
         """Creates a snake in its initial state."""
-        super().__init__(body_color=SNAKE_COLOR)
+        super().__init__(position=position, body_color=body_color)
         self.reset()
 
     def update_direction(self):
@@ -105,29 +130,14 @@ class Snake(GameObject):
 
         self.positions.insert(0, new_head)
 
-        # If length didn't increase, remove the tail and remember its
-        # coordinates to erase the trace later.
+        # If length didn't increase, remove the tail.
         if len(self.positions) > self.length:
-            self.last = self.positions.pop()
-        else:
-            self.last = None
+            self.positions.pop()
 
     def draw(self):
-        """Draws the snake and erases the tail's trace."""
-        for position in self.positions[:-1]:
-            rect = pygame.Rect(position, (GRID_SIZE, GRID_SIZE))
-            pygame.draw.rect(screen, self.body_color, rect)
-            pygame.draw.rect(screen, BORDER_COLOR, rect, 1)
-
-        # Draw the snake's head
-        head_rect = pygame.Rect(self.positions[0], (GRID_SIZE, GRID_SIZE))
-        pygame.draw.rect(screen, self.body_color, head_rect)
-        pygame.draw.rect(screen, BORDER_COLOR, head_rect, 1)
-
-        # Erase the last segment
-        if self.last:
-            last_rect = pygame.Rect(self.last, (GRID_SIZE, GRID_SIZE))
-            pygame.draw.rect(screen, BOARD_BACKGROUND_COLOR, last_rect)
+        """Draws the snake on the game field."""
+        for position in self.positions:
+            self.draw_cell(position)
 
     def get_head_position(self):
         """Returns the position of the snake's head."""
@@ -136,44 +146,38 @@ class Snake(GameObject):
     def reset(self):
         """Resets the snake to its initial state."""
         self.length = 1
-        self.positions = [(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)]
+        self.positions = [self.position]
         self.direction = RIGHT
         self.next_direction = None
-        self.last = None
 
 
 def handle_keys(game_object):
     """Handles key presses for snake control."""
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            raise SystemExit
-        elif event.type == pygame.KEYDOWN:
-            # The snake cannot move in the opposite direction.
-            if event.key == pygame.K_UP and game_object.direction != DOWN:
-                game_object.next_direction = UP
-            elif event.key == pygame.K_DOWN and game_object.direction != UP:
-                game_object.next_direction = DOWN
-            elif event.key == pygame.K_LEFT and game_object.direction != RIGHT:
-                game_object.next_direction = LEFT
-            elif event.key == pygame.K_RIGHT and game_object.direction != LEFT:
-                game_object.next_direction = RIGHT
+    for event in pg.event.get():
+        if event.type == pg.QUIT:
+            pg.quit()
+            sys.exit()
+        elif event.type == pg.KEYDOWN:
+            if event.key in TURNS:
+                new_direction, opposite = TURNS[event.key]
+                if game_object.direction != opposite:
+                    game_object.next_direction = new_direction
 
 
 def main():
     """Runs the main game loop."""
     # PyGame initialization:
-    pygame.init()
+    pg.init()
 
     # Create instances of the classes.
     snake = Snake()
-    apple = Apple()
-
-    # Clear the screen at start.
-    screen.fill(BOARD_BACKGROUND_COLOR)
+    apple = Apple(snake.positions)
 
     while True:
         clock.tick(SPEED)
+
+        # Clear the screen at the start of each frame.
+        screen.fill(BOARD_BACKGROUND_COLOR)
 
         # Handle key presses.
         handle_keys(snake)
@@ -184,24 +188,20 @@ def main():
         # Move the snake.
         snake.move()
 
-        # If the snake ate the apple - increase length and move the apple.
+        # Check if the snake ate the apple or collided with itself.
         if snake.get_head_position() == apple.position:
             snake.length += 1
-            apple.randomize_position()
-
-        # Check if the snake collided with itself.
-        if snake.get_head_position() in snake.positions[1:]:
+            apple.randomize_position(snake.positions)
+        elif snake.get_head_position() in snake.positions[4:]:
             snake.reset()
-            apple.randomize_position()
-            screen.fill(BOARD_BACKGROUND_COLOR)
-            continue
+            apple.randomize_position(snake.positions)
 
         # Draw the objects.
         snake.draw()
         apple.draw()
 
         # Update the screen.
-        pygame.display.update()
+        pg.display.update()
 
 
 if __name__ == '__main__':
